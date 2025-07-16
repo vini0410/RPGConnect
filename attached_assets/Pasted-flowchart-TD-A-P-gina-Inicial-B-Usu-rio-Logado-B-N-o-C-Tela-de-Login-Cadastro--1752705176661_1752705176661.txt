@@ -1,0 +1,99 @@
+flowchart TD
+    A[Página Inicial] --> B{Usuário Logado?}
+    B -->|Não| C[Tela de Login/Cadastro]
+    B -->|Sim| D[Homepage]
+    
+    C --> E[Criar Conta]
+    C --> F[Fazer Login]
+    E --> G[Preencher dados: Nome, Email, Senha]
+    F --> H[Inserir Email e Senha]
+    G --> I{Dados Válidos?}
+    H --> J{Credenciais Válidas?}
+    I -->|Não| K[Exibir Erro]
+    I -->|Sim| D
+    J -->|Não| L[Exibir Erro de Login]
+    J -->|Sim| D
+    K --> C
+    L --> C
+    
+    D --> M[Visualizar Mesas Criadas]
+    D --> N[Visualizar Mesas que Participa]
+    D --> O[Criar Nova Mesa]
+    D --> P[Ingressar em Mesa]
+    D --> Q[Menu Usuário]
+    
+    O --> R[Preencher: Título, Livro de Regras]
+    R --> S[Gerar Código Único]
+    S --> II[Tela da Sessão Ativa]
+    
+    P --> V[Inserir Código da Mesa]
+    V --> W{Código Válido?}
+    W -->|Não| X[Exibir Erro - Código Inválido]
+    W -->|Sim| Y[Criar Personagem]
+    X --> P
+    Y --> Z[Preencher: Nome, Atributos]
+    Z --> AA[Personagem Criado]
+    AA --> BB[Entrar na Mesa]
+    
+    Q --> CC[Ver Perfil]
+    Q --> DD[Editar Perfil]
+    Q --> EE[Logout]
+    
+    CC --> FF[Visualizar: Nome, Email, Avatar]
+    DD --> GG[Editar: Nome, Email, Avatar]
+    GG --> HH[Salvar Alterações]
+    HH --> D
+    EE --> A
+    
+    U --> II
+    BB --> II
+    
+    II --> JJ[Visualizar Personagens]
+    II --> KK[Quadro Colaborativo]
+    II --> LL[Menu da Mesa]
+    
+    JJ --> MM{É Mestre?}
+    MM -->|Sim| NN[Editar Atributos dos Personagens]
+    MM -->|Não| OO[Visualizar Atributos]
+    
+    KK --> PP{É Mestre?}
+    PP -->|Sim| QQ[Desenhar/Editar Quadro]
+    PP -->|Não| RR[Visualizar Quadro]
+    
+    LL --> SS[Detalhes da Mesa]
+    LL --> TT[Sair da Mesa]
+    LL --> UU{É Mestre?}
+    UU -->|Sim| VV[Editar Mesa]
+    UU -->|Sim| WW[Excluir Mesa]
+    UU -->|Não| XX[Apenas Sair]
+    
+    SS --> YY[Ver Lista de Jogadores]
+    SS --> ZZ[Ver Código da Mesa]
+    
+    TT --> D
+    XX --> D
+    VV --> AAA[Editar Título/Regras]
+    WW --> BBB[Confirmar Exclusão]
+    AAA --> CCC[Salvar Alterações]
+    BBB --> DDD{Confirmar?}
+    DDD -->|Sim| D
+    DDD -->|Não| II
+    CCC --> II
+    
+    %% Atualizações em Tempo Real
+    NN -.->|WebSocket| JJ
+    QQ -.->|WebSocket| KK
+    Y -.->|WebSocket| JJ
+    
+    %% Estilos
+    classDef startEnd fill:#e1f5fe
+    classDef process fill:#f3e5f5
+    classDef decision fill:#fff3e0
+    classDef error fill:#ffebee
+    classDef realtime fill:#e8f5e8
+    
+    class A,D,II startEnd
+    class C,E,F,G,H,O,R,V,Y,Z,CC,DD,GG process
+    class B,I,J,W,MM,PP,UU,DDD decision
+    class K,L,X error
+    class NN,QQ realtime
