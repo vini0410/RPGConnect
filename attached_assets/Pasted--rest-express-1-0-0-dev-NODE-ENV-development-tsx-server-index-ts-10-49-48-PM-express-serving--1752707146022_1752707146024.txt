@@ -1,0 +1,69 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+10:49:48 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+10:49:55 PM [express] GET /api/user 401 in 3ms
+10:49:59 PM [express] GET /api/user 401 in 1ms
+10:51:34 PM [express] POST /api/login 400 in 1ms
+10:52:04 PM [express] POST /api/register 201 in 669ms :: {"id":1,"name":"vini h","email":"vini0410@em…
+10:52:04 PM [express] GET /api/tables/owned 200 in 89ms :: []
+10:52:06 PM [express] GET /api/tables/joined 200 in 2123ms :: []
+10:52:49 PM [express] POST /api/logout 200 in 135ms
+10:52:53 PM [express] POST /api/login 400 in 33ms
+10:53:14 PM [express] POST /api/register 201 in 216ms :: {"id":2,"name":"vini h","email":"vini0410@em…
+10:53:40 PM [express] POST /api/tables 201 in 174ms :: {"id":"bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e","…
+10:53:40 PM [express] GET /api/tables/owned 200 in 69ms :: [{"id":"bb60e7b3-a9bc-44be-ba92-fb20a7f5d6…
+10:53:47 PM [express] GET /api/tables/bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e/characters 200 in 87ms :: …
+10:53:48 PM [express] GET /api/tables/bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e 200 in 133ms :: {"id":"bb6…
+10:54:30 PM [express] POST /api/logout 200 in 168ms
+10:54:45 PM [express] POST /api/register 201 in 224ms :: {"id":3,"name":"user teste","email":"user@em…
+10:55:02 PM [express] POST /api/tables/join 404 in 115ms :: {"message":"Invalid access code"}
+10:55:19 PM [express] POST /api/tables/join 200 in 125ms :: {"id":"bb60e7b3-a9bc-44be-ba92-fb20a7f5d6…
+10:55:46 PM [express] POST /api/tables/bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e/characters 201 in 181ms :…
+10:55:47 PM [express] GET /api/tables/bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e/characters 200 in 91ms :: …
+10:56:01 PM [express] PUT /api/characters/a3c707d0-91f9-41cf-b010-8b2ce80947bb 200 in 194ms :: {"id":…
+10:56:01 PM [express] GET /api/tables/bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e/characters 200 in 99ms :: …
+10:56:04 PM [express] PUT /api/characters/a3c707d0-91f9-41cf-b010-8b2ce80947bb 200 in 107ms :: {"id":…
+10:56:05 PM [express] GET /api/tables/bb60e7b3-a9bc-44be-ba92-fb20a7f5d60e/characters 200 in 90ms :: …
+10:58:16 PM [express] POST /api/logout 200 in 2545ms
+10:58:16 PM [express] POST /api/logout 200 in 74ms
+10:58:16 PM [express] POST /api/logout 200 in 71ms
+10:58:17 PM [express] POST /api/logout 200 in 2147ms
+10:58:18 PM [express] POST /api/logout 200 in 2134ms
+11:03:39 PM [express] GET /api/user 401 in 33ms
+11:03:46 PM [express] GET /api/user 401 in 32ms
+11:04:19 PM [express] POST /api/login 400 in 97ms
+11:04:27 PM [express] POST /api/login 400 in 34ms
+11:04:37 PM [express] POST /api/login 400 in 91ms
+file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345
+o?t(o):n(u)},"cb"),s=new r(function(o,u){n=o,t=u}).catch(o=>{throw Error.captureStackTrace(
+                                                                         ^
+
+error: duplicate key value violates unique constraint "users_email_unique"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createUser (/home/runner/workspace/server/storage.ts:60:20)
+    at async <anonymous> (/home/runner/workspace/server/auth.ts:67:18) {
+  length: 216,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (email)=(vini0410@email.com) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'users',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'users_email_unique',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
