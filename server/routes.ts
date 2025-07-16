@@ -232,10 +232,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             currentTableId = message.tableId;
-            if (!tableConnections.has(currentTableId)) {
+            if (currentTableId && !tableConnections.has(currentTableId)) {
               tableConnections.set(currentTableId, new Set());
             }
-            tableConnections.get(currentTableId)!.add(ws);
+            if (currentTableId) {
+              tableConnections.get(currentTableId)!.add(ws);
+            }
             break;
             
           case 'whiteboard_draw':

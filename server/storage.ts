@@ -1,6 +1,6 @@
 import { users, tables, characters, type User, type InsertUser, type Table, type InsertTable, type Character, type InsertCharacter } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -10,6 +10,7 @@ const PostgresSessionStore = connectPg(session);
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
   getTable(id: string): Promise<Table | undefined>;
@@ -27,11 +28,11 @@ export interface IStorage {
   updateCharacter(id: string, updates: Partial<Character>): Promise<Character>;
   deleteCharacter(id: string): Promise<void>;
   
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
@@ -47,6 +48,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, username));
     return user || undefined;
   }
 
@@ -74,15 +80,11 @@ export class DatabaseStorage implements IStorage {
 
   async getTablesByUser(userId: number): Promise<Table[]> {
     const userCharacters = await db.select().from(characters).where(eq(characters.userId, userId));
-    const tableIds = [...new Set(userCharacters.map(c => c.tableId))];
+    const tableIds = Array.from(new Set(userCharacters.map(c => c.tableId)));
     
     if (tableIds.length === 0) return [];
     
-    return await db.select().from(tables).where(
-      tableIds.length === 1 
-        ? eq(tables.id, tableIds[0])
-        : tables.id.in(tableIds)
-    );
+    return await db.select().from(tables).where(inArray(tables.id, tableIds));
   }
 
   async createTable(table: InsertTable & { masterId: number, accessCode: string }): Promise<Table> {
