@@ -22,6 +22,9 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
   const [tool, setTool] = useState<"pen" | "eraser" | "shape">("pen");
   const [color, setColor] = useState("#3b82f6");
   const [brushSize, setBrushSize] = useState(2);
+  
+  // Estado para armazenar as coordenadas anteriores
+  const [lastPos, setLastPos] = useState<{x: number, y: number} | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -50,9 +53,15 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
     if (!ws) return;
 
     const handleMessage = (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      if (data.type === "whiteboard_draw") {
-        drawFromData(data.data);
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Received WebSocket message:", data); // Debug log
+        
+        if (data.type === "whiteboard_draw") {
+          drawFromData(data.data);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
       }
     };
 
@@ -67,20 +76,31 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    console.log("Drawing from data:", data); // Debug log
+
     if (data.type === "clear") {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
 
+    // Configurar contexto para desenho
     ctx.globalCompositeOperation = data.type === "erase" ? "destination-out" : "source-over";
     ctx.strokeStyle = data.color || "#3b82f6";
     ctx.lineWidth = data.size || 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
 
+    // Desenhar apenas se tiver coordenadas anteriores
     if (data.prevX !== undefined && data.prevY !== undefined) {
       ctx.beginPath();
       ctx.moveTo(data.prevX, data.prevY);
       ctx.lineTo(data.x, data.y);
       ctx.stroke();
+    } else {
+      // Se não tiver coordenadas anteriores, desenhar um ponto
+      ctx.beginPath();
+      ctx.arc(data.x, data.y, (data.size || 2) / 2, 0, 2 * Math.PI);
+      ctx.fill();
     }
   };
 
@@ -98,6 +118,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDrawing(true);
     const pos = getCanvasPosition(e);
+    setLastPos(pos); // Armazenar posição inicial
     
     if (tool === "pen" || tool === "eraser") {
       const canvas = canvasRef.current;
@@ -109,28 +130,15 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
       ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
       ctx.strokeStyle = color;
       ctx.lineWidth = brushSize;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      // Desenhar ponto inicial
       ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-    }
-  };
+      ctx.arc(pos.x, pos.y, brushSize / 2, 0, 2 * Math.PI);
+      ctx.fill();
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDrawing) return;
-
-    const pos = getCanvasPosition(e);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    if (tool === "pen" || tool === "eraser") {
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-
-      // Send drawing data to other clients
+      // Enviar dados iniciais para outros clientes
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: "whiteboard_draw",
@@ -146,8 +154,53 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
     }
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDrawing || !lastPos) return;
+
+    const pos = getCanvasPosition(e);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (tool === "pen" || tool === "eraser") {
+      // Desenhar localmente
+      ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      ctx.beginPath();
+      ctx.moveTo(lastPos.x, lastPos.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+
+      // Enviar dados para outros clientes com coordenadas anteriores
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "whiteboard_draw",
+          data: {
+            type: tool === "eraser" ? "erase" : "draw",
+            x: pos.x,
+            y: pos.y,
+            prevX: lastPos.x,
+            prevY: lastPos.y,
+            color: color,
+            size: brushSize,
+          },
+        }));
+      }
+
+      // Atualizar posição anterior
+      setLastPos(pos);
+    }
+  };
+
   const handleMouseUp = () => {
     setIsDrawing(false);
+    setLastPos(null); // Limpar posição anterior
   };
 
   const clearCanvas = () => {

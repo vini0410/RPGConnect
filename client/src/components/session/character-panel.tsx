@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Character } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 interface CharacterPanelProps {
   characters: Character[];
   isTableMaster: boolean;
-  currentUserId?: number;
+  currentUserId?: string;
   ws: WebSocket | null;
 }
 
@@ -21,16 +21,70 @@ export function CharacterPanel({ characters, isTableMaster, currentUserId, ws }:
   const [editingCharacter, setEditingCharacter] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Character>>({});
 
+  // Adicionar listener para mensagens do WebSocket
+  useEffect(() => {
+    if (!ws) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("CharacterPanel received WebSocket message:", data);
+        
+        if (data.type === "character_updated") {
+          // Atualizar o cache local com o personagem atualizado
+          queryClient.setQueryData(
+            ["/api/tables", data.character.tableId, "characters"],
+            (oldData: Character[] | undefined) => {
+              if (!oldData) return oldData;
+              return oldData.map((char) =>
+                char.id === data.character.id ? data.character : char
+              );
+            }
+          );
+          
+          toast({
+            title: "Character updated",
+            description: `${data.character.name} was updated by another player`,
+          });
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message in CharacterPanel:", error);
+      }
+    };
+
+    ws.addEventListener("message", handleMessage);
+    return () => ws.removeEventListener("message", handleMessage);
+  }, [ws, queryClient, toast]);
+
   const updateCharacterMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Character> }) => {
       const res = await apiRequest("PUT", `/api/characters/${id}`, updates);
       return await res.json();
     },
     onSuccess: (character) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tables", character.tableId, "characters"] });
+      // Atualizar cache local primeiro
+      queryClient.setQueryData(
+        ["/api/tables", character.tableId, "characters"],
+        (oldData: Character[] | undefined) => {
+          if (!oldData) return oldData;
+          return oldData.map((char) =>
+            char.id === character.id ? character : char
+          );
+        }
+      );
+
+      // Enviar atualização via WebSocket para outros clientes
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "character_updated",
+          character: character,
+        }));
+      }
+
       toast({
         title: "Character updated successfully",
       });
+      
       setEditingCharacter(null);
       setEditValues({});
     },

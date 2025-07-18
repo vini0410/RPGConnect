@@ -1,28 +1,28 @@
-import { pgTable, text, serial, integer, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, uuid} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = pgTable("User", {
+  id: uuid("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
-export const tables = pgTable("tables", {
+export const tables = pgTable("Table", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   rulebook: text("rulebook").notNull(),
-  accessCode: text("access_code").notNull().unique(),
-  masterId: integer("master_id").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  accessCode: text("accessCode").notNull().unique(),
+  masterId: uuid("masterId").references(() => users.id).notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
-export const characters = pgTable("characters", {
+export const characters = pgTable("Character", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   health: integer("health").notNull(),
@@ -30,10 +30,10 @@ export const characters = pgTable("characters", {
   strength: integer("strength").notNull(),
   agility: integer("agility").notNull(),
   intelligence: integer("intelligence").notNull(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  tableId: uuid("table_id").references(() => tables.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  userId: uuid("userId").references(() => users.id).notNull(),
+  tableId: uuid("tableId").references(() => tables.id).notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({

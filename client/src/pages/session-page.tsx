@@ -22,29 +22,87 @@ export default function SessionPage() {
   const { data: table } = useQuery<Table>({
     queryKey: ["/api/tables", tableId],
     enabled: !!tableId,
+    onError: (err) => console.error("Failed to load table:", err),
   });
 
   const { data: characters = [] } = useQuery<Character[]>({
     queryKey: ["/api/tables", tableId, "characters"],
     enabled: !!tableId,
+    onError: (err) => console.error("Failed to load characters:", err),
   });
 
   // Check if user has a character in this table
-  const userCharacter = characters.find(c => c.userId === user?.id);
+  const userCharacter = characters.find((c) => c.userId === user?.id);
   const isTableMaster = table?.masterId === user?.id;
 
   useEffect(() => {
     if (!tableId) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host;
     const wsUrl = `${protocol}//${window.location.host}/ws`;
+    console.log("Connecting to WebSocket:", wsUrl);
+
+    console.log("=== WebSocket Debug Info ===");
+    console.log("TableId:", tableId);
+    console.log("Protocol:", protocol);
+    console.log("Host:", host);
+    console.log("Full URL:", wsUrl);
+    console.log("Window location:", window.location);
+    // console.log("Environment variables:", process.env);
+    console.log("============================");
+
     const socket = new WebSocket(wsUrl);
+    console.log("WebSocket created:", socket);
 
     socket.onopen = () => {
-      socket.send(JSON.stringify({
-        type: 'join_table',
-        tableId
-      }));
+      socket.send(
+        JSON.stringify({
+          type: "join_table",
+          tableId,
+        }),
+      );
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Received WebSocket message:", data);
+
+        // Handle different message types
+        switch (data.type) {
+          case "whiteboard_draw":
+            console.log("Whiteboard draw data:", data.data);
+            break;
+          case "chat_message":
+            console.log("Chat message:", data.message, "from:", data.sender);
+            break;
+          case "character_created":
+            console.log("Character created:", data.character);
+            break;
+          case "character_updated":
+            console.log("Character updated:", data.character);
+            break;
+          case "user_joined":
+            console.log("User joined table:", data.tableId);
+            break;
+          case "user_left":
+            console.log("User left table:", data.tableId);
+            break;
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+
+    socket.onclose = (event) => {
+      console.log("WebSocket connection closed:", event.code, event.reason);
+      setIsConnected(false);
+    };
+
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setIsConnected(false);
     };
 
     setWs(socket);
@@ -59,12 +117,29 @@ export default function SessionPage() {
     if (table && !userCharacter && !isTableMaster) {
       setShowCharacterCreation(true);
     }
-  }, [table, userCharacter, isTableMaster]);
+    // Só executa quando todos os dados estiverem carregados
+    if (!table || !user || characters === undefined) {
+      console.log("Waiting for data to load...");
+      return;
+    }
+
+    const shouldShowCreation = !userCharacter && !isTableMaster;
+
+    setShowCharacterCreation(shouldShowCreation);
+  }, [table, user, characters, userCharacter, isTableMaster]);
 
   if (!table) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="text-white">Loading table...</div>
+      </div>
+    );
+  }
+
+  if (!table || !user || characters === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading session data...</div>
       </div>
     );
   }

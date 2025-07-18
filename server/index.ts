@@ -1,10 +1,17 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import session from "express-session";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(session({
+  secret: process.env.SESSION_SECRET || "defaultSecret",
+  resave: false,
+  saveUninitialized: true,
+  cookie: {secure: false}, // Set to true if using HTTPS
+}))
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -37,6 +44,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // registerRoutes já retorna o servidor HTTP com WebSocket configurado
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -66,6 +74,6 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${port} with WebSocket support`);
   });
 })();

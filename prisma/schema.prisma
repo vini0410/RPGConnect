@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [pgcrypto]
+}
+
+model User {
+  // id          String     @id @default(uuid())
+  // name        String
+  // email       String     @unique
+  // password    String
+  // createdAt   DateTime   @default(now())
+  // updatedAt   DateTime   @default(now())
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String    @db.VarChar(255)
+  email     String    @unique @db.VarChar(255)
+  password  String    @db.VarChar(255)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @default(now()) @db.Timestamptz
+
+  // Relações
+  ownedTables Table[]    @relation("UserAsMaster")
+  characters  Character[]
+}
+
+model Table {
+  // id          String     @id @default(uuid())
+  // title       String
+  // rulebook    String     // Pode ser uma URL ou nome do livro de regras
+  // accessCode  String     @unique
+  // createdAt   DateTime   @default(now())
+  // updatedAt   DateTime   @updatedAt
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title      String     @db.VarChar(255)
+  rulebook   String     @db.VarChar(255) // Can be a URL or rulebook name
+  accessCode String     @unique @db.VarChar(255)
+  createdAt  DateTime   @default(now()) @db.Timestamptz
+  updatedAt  DateTime   @default(now()) @db.Timestamptz
+
+
+  // Relações
+  masterId    String     @db.Uuid
+  master      User       @relation("UserAsMaster", fields: [masterId], references: [id])
+  characters  Character[]
+}
+
+model Character {
+  // id           String     @id @default(uuid())
+  // name         String
+  // health       Int
+  // mana         Int
+  // strength     Int
+  // agility      Int
+  // intelligence Int
+  // createdAt    DateTime   @default(now())
+  // updatedAt    DateTime   @updatedAt
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String     @db.VarChar(255)
+  health       Int
+  mana         Int
+  strength     Int
+  agility      Int
+  intelligence Int
+  createdAt    DateTime   @default(now()) @db.Timestamptz
+  updatedAt    DateTime   @default(now()) @db.Timestamptz
+
+  // Relações
+  userId       String     @db.Uuid
+  user         User       @relation(fields: [userId], references: [id])
+
+  tableId      String     @db.Uuid
+  table        Table      @relation(fields: [tableId], references: [id])
+}
