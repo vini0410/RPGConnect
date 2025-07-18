@@ -188,9 +188,9 @@ export default function SessionPage() {
       </div>
 
       {/* Session Content */}
-      <div className="flex h-screen">
+      <div className="flex h-full">
         {/* Characters Panel */}
-        <div className="w-80 bg-gray-800 border-r border-gray-700 overflow-y-auto">
+        <div className="h-full w-full bg-gray-800 border-r border-gray-700 overflow-hidden">
           <CharacterPanel
             characters={characters}
             isTableMaster={isTableMaster}
@@ -200,16 +200,14 @@ export default function SessionPage() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Collaborative Whiteboard */}
-          <div className="flex-1 bg-gray-900 relative">
-            <CollaborativeWhiteboard ws={ws} />
-          </div>
+        {/* Collaborative Whiteboard */}
+        <div className="bg-gray-900 relative">
+          <CollaborativeWhiteboard ws={ws} />
+        </div>
 
-          {/* Chat Panel */}
-          <div className="h-48 bg-gray-800 border-t border-gray-700">
-            <ChatPanel ws={ws} userName={user?.name || "Unknown"} />
-          </div>
+        {/* Chat Panel */}
+        <div className="h-full w-full bg-gray-800 border-t border-gray-700 overflow-hidden">
+          <ChatPanel ws={ws} userName={user?.name || "Unknown"} />
         </div>
       </div>
 

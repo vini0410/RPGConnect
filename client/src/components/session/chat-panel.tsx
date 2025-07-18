@@ -61,7 +61,7 @@ export function ChatPanel({ ws, userName }: ChatPanelProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full">
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-2">
           {messages.length === 0 ? (

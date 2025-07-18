@@ -22,9 +22,9 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
   const [tool, setTool] = useState<"pen" | "eraser" | "shape">("pen");
   const [color, setColor] = useState("#3b82f6");
   const [brushSize, setBrushSize] = useState(2);
-  
+
   // Estado para armazenar as coordenadas anteriores
-  const [lastPos, setLastPos] = useState<{x: number, y: number} | null>(null);
+  const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,7 +37,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
-      
+
       // Set canvas styles
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -56,7 +56,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
       try {
         const data = JSON.parse(event.data);
         console.log("Received WebSocket message:", data); // Debug log
-        
+
         if (data.type === "whiteboard_draw") {
           drawFromData(data.data);
         }
@@ -84,7 +84,8 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
     }
 
     // Configurar contexto para desenho
-    ctx.globalCompositeOperation = data.type === "erase" ? "destination-out" : "source-over";
+    ctx.globalCompositeOperation =
+      data.type === "erase" ? "destination-out" : "source-over";
     ctx.strokeStyle = data.color || "#3b82f6";
     ctx.lineWidth = data.size || 2;
     ctx.lineCap = "round";
@@ -119,7 +120,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
     setIsDrawing(true);
     const pos = getCanvasPosition(e);
     setLastPos(pos); // Armazenar posição inicial
-    
+
     if (tool === "pen" || tool === "eraser") {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -127,12 +128,13 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+      ctx.globalCompositeOperation =
+        tool === "eraser" ? "destination-out" : "source-over";
       ctx.strokeStyle = color;
       ctx.lineWidth = brushSize;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      
+
       // Desenhar ponto inicial
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, brushSize / 2, 0, 2 * Math.PI);
@@ -140,16 +142,18 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
 
       // Enviar dados iniciais para outros clientes
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: "whiteboard_draw",
-          data: {
-            type: tool === "eraser" ? "erase" : "draw",
-            x: pos.x,
-            y: pos.y,
-            color: color,
-            size: brushSize,
-          },
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "whiteboard_draw",
+            data: {
+              type: tool === "eraser" ? "erase" : "draw",
+              x: pos.x,
+              y: pos.y,
+              color: color,
+              size: brushSize,
+            },
+          }),
+        );
       }
     }
   };
@@ -166,12 +170,13 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
 
     if (tool === "pen" || tool === "eraser") {
       // Desenhar localmente
-      ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+      ctx.globalCompositeOperation =
+        tool === "eraser" ? "destination-out" : "source-over";
       ctx.strokeStyle = color;
       ctx.lineWidth = brushSize;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      
+
       ctx.beginPath();
       ctx.moveTo(lastPos.x, lastPos.y);
       ctx.lineTo(pos.x, pos.y);
@@ -179,18 +184,20 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
 
       // Enviar dados para outros clientes com coordenadas anteriores
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: "whiteboard_draw",
-          data: {
-            type: tool === "eraser" ? "erase" : "draw",
-            x: pos.x,
-            y: pos.y,
-            prevX: lastPos.x,
-            prevY: lastPos.y,
-            color: color,
-            size: brushSize,
-          },
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "whiteboard_draw",
+            data: {
+              type: tool === "eraser" ? "erase" : "draw",
+              x: pos.x,
+              y: pos.y,
+              prevX: lastPos.x,
+              prevY: lastPos.y,
+              color: color,
+              size: brushSize,
+            },
+          }),
+        );
       }
 
       // Atualizar posição anterior
@@ -214,10 +221,12 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
 
     // Send clear command to other clients
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: "whiteboard_draw",
-        data: { type: "clear", x: 0, y: 0 },
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "whiteboard_draw",
+          data: { type: "clear", x: 0, y: 0 },
+        }),
+      );
     }
   };
 
@@ -232,7 +241,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
   ];
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-[800px] h-[400px] border border-gray-700">
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair bg-gray-900"
@@ -241,7 +250,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       />
-      
+
       {/* Drawing Tools */}
       <div className="absolute top-4 left-4 bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-lg p-3 border border-gray-700">
         <div className="flex items-center space-x-3">
@@ -249,29 +258,41 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
             size="sm"
             variant={tool === "pen" ? "default" : "ghost"}
             onClick={() => setTool("pen")}
-            className={`w-8 h-8 p-0 ${tool === "pen" ? "bg-blue-600 hover:bg-blue-700" : "hover:bg-gray-700"}`}
+            className={`w-8 h-8 p-0 ${
+              tool === "pen"
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "hover:bg-gray-700"
+            }`}
           >
             <Pen className="w-4 h-4" />
           </Button>
-          
+
           <Button
             size="sm"
             variant={tool === "eraser" ? "default" : "ghost"}
             onClick={() => setTool("eraser")}
-            className={`w-8 h-8 p-0 ${tool === "eraser" ? "bg-blue-600 hover:bg-blue-700" : "hover:bg-gray-700"}`}
+            className={`w-8 h-8 p-0 ${
+              tool === "eraser"
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "hover:bg-gray-700"
+            }`}
           >
             <Eraser className="w-4 h-4" />
           </Button>
-          
+
           <Button
             size="sm"
             variant={tool === "shape" ? "default" : "ghost"}
             onClick={() => setTool("shape")}
-            className={`w-8 h-8 p-0 ${tool === "shape" ? "bg-blue-600 hover:bg-blue-700" : "hover:bg-gray-700"}`}
+            className={`w-8 h-8 p-0 ${
+              tool === "shape"
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "hover:bg-gray-700"
+            }`}
           >
             <Square className="w-4 h-4" />
           </Button>
-          
+
           <div className="flex items-center space-x-1">
             {colors.map((clr) => (
               <button
@@ -284,7 +305,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
               />
             ))}
           </div>
-          
+
           <Button
             size="sm"
             variant="ghost"
