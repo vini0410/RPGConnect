@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
+import { MessageSquare, Send } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -61,8 +61,12 @@ export function ChatPanel({ ws, userName }: ChatPanelProps) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
-      <div className="flex-1 p-4 overflow-y-auto">
+    <div className="flex flex-col h-full">
+      <h2 className="text-lg font-semibold text-white p-4 border-b border-gray-700 flex-shrink-0 flex items-center">
+        <MessageSquare className="w-5 h-5 mr-2 text-purple-500" />
+        Chat
+      </h2>
+      <div className="flex-1 p-4 overflow-y-auto space-y-2">
         <div className="space-y-2">
           {messages.length === 0 ? (
             <div className="text-center text-gray-400 py-8">
@@ -88,7 +92,7 @@ export function ChatPanel({ ws, userName }: ChatPanelProps) {
         </div>
       </div>
       
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-gray-700 flex-shrink-0">
         <form onSubmit={handleSendMessage} className="flex space-x-2">
           <Input
             value={newMessage}

@@ -241,7 +241,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
   ];
 
   return (
-    <div className="relative w-[800px] h-[400px] border border-gray-700">
+    <div className="relative w-[900px] h-[600px] border border-gray-700 rounded-lg overflow-hidden">
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair bg-gray-900"

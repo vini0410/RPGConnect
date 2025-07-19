@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, Users } from "lucide-react";
+import { ArrowLeft, MessageSquare, Settings, Users, X } from "lucide-react";
 import { Table, Character } from "@shared/schema";
 import { CharacterPanel } from "@/components/session/character-panel";
 import { CollaborativeWhiteboard } from "@/components/session/collaborative-whiteboard";
@@ -15,6 +15,8 @@ export default function SessionPage() {
   const [, params] = useRoute("/session/:tableId");
   const [, setLocation] = useLocation();
   const [showCharacterCreation, setShowCharacterCreation] = useState(false);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   const tableId = params?.tableId;
@@ -97,12 +99,10 @@ export default function SessionPage() {
 
     socket.onclose = (event) => {
       console.log("WebSocket connection closed:", event.code, event.reason);
-      setIsConnected(false);
     };
 
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
-      setIsConnected(false);
     };
 
     setWs(socket);
@@ -145,9 +145,9 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="flex flex-col h-screen bg-gray-900 text-white">
       {/* Session Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
+      <header className="bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <div className="max-w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
@@ -185,31 +185,95 @@ export default function SessionPage() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Session Content */}
-      <div className="flex h-full">
+      <main className="flex-grow flex flex-row p-4 gap-4 overflow-hidden relative">
+        {/* Backdrop for mobile panel view */}
+        {(isLeftPanelOpen || isRightPanelOpen) && (
+          <div
+            className="fixed inset-0 bg-black/60 z-10 2xl:hidden"
+            onClick={() => {
+              setIsLeftPanelOpen(false);
+              setIsRightPanelOpen(false);
+            }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Mobile Toggle Buttons */}
+        <Button
+          variant="secondary"
+          size="icon"
+          className="2xl:hidden fixed top-1/2 -translate-y-1/2 left-0 z-20 rounded-l-none shadow-lg"
+          onClick={() => setIsLeftPanelOpen(true)}
+          aria-label="Open characters panel"
+        >
+          <Users className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="icon"
+          className="2xl:hidden fixed top-1/2 -translate-y-1/2 right-0 z-20 rounded-r-none shadow-lg"
+          onClick={() => setIsRightPanelOpen(true)}
+          aria-label="Open chat panel"
+        >
+          <MessageSquare className="w-5 h-5" />
+        </Button>
+
         {/* Characters Panel */}
-        <div className="h-full w-full bg-gray-800 border-r border-gray-700 overflow-hidden">
+        <aside
+          className={`
+            absolute top-0 left-0 h-full w-full max-w-[400px] bg-gray-800 rounded-r-lg 2xl:rounded-lg border-r 2xl:border border-gray-700 flex flex-col z-20
+            transition-transform duration-300 ease-in-out
+            2xl:static 2xl:translate-x-0
+            ${isLeftPanelOpen ? "translate-x-0" : "-translate-x-full"}
+          `}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="2xl:hidden absolute top-2 right-2 text-gray-400 hover:text-white"
+            onClick={() => setIsLeftPanelOpen(false)}
+            aria-label="Close characters panel"
+          >
+            <X className="w-5 h-5" />
+          </Button>
           <CharacterPanel
             characters={characters}
             isTableMaster={isTableMaster}
             currentUserId={user?.id}
             ws={ws}
           />
-        </div>
+        </aside>
 
         {/* Main Content Area */}
         {/* Collaborative Whiteboard */}
-        <div className="bg-gray-900 relative">
+        <section className="flex-grow flex items-center justify-center z-0">
           <CollaborativeWhiteboard ws={ws} />
-        </div>
+        </section>
 
         {/* Chat Panel */}
-        <div className="h-full w-full bg-gray-800 border-t border-gray-700 overflow-hidden">
+        <aside
+          className={`
+            absolute top-0 right-0 h-full w-full max-w-[400px] bg-gray-800 rounded-l-lg 2xl:rounded-lg border-l 2xl:border border-gray-700 flex flex-col z-20
+            transition-transform duration-300 ease-in-out
+            2xl:static 2xl:translate-x-0
+            ${isRightPanelOpen ? "translate-x-0" : "translate-x-full"}
+          `}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="2xl:hidden absolute top-2 left-2 text-gray-400 hover:text-white"
+            onClick={() => setIsRightPanelOpen(false)}
+            aria-label="Close chat panel"
+          >
+            <X className="w-5 h-5" />
+          </Button>
           <ChatPanel ws={ws} userName={user?.name || "Unknown"} />
-        </div>
-      </div>
+        </aside>
+      </main>
 
       {/* Character Creation Modal */}
       <CharacterCreationModal

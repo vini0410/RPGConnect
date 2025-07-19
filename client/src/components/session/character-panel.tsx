@@ -139,15 +139,15 @@ export function CharacterPanel({ characters, isTableMaster, currentUserId, ws }:
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+    <div className="flex flex-col h-full">
+      <h2 className="text-lg font-semibold text-white p-4 border-b border-gray-700 flex-shrink-0 flex items-center">
         <Users className="w-5 h-5 mr-2 text-blue-500" />
         Characters
       </h2>
       
-      <div className="space-y-4">
+      <div className="flex-grow overflow-y-auto p-4 space-y-4">
         {characters.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center text-gray-400 h-full flex flex-col justify-center items-center">
             <p>No characters yet</p>
             <p className="text-sm">Join the table to create a character</p>
           </div>
