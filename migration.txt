@@ -1,0 +1,236 @@
+# Documento de Migração de Sistema: RPGConnect
+
+## 1. Visão Geral do Sistema
+
+O RPGConnect é uma plataforma web para gerenciar e participar de sessões de RPG de mesa. 
+Ele permite que Mestres de Jogo criem e administrem mesas, e que Jogadores se juntem a elas, interajam em tempo real e gerenciem seus personagens.
+
+## 2. Backend
+
+### 2.1. Banco de Dados
+
+O banco de dados é relacional e consiste em três tabelas principais.
+
+#### Tabela: `User` (Usuário)
+Armazena informações sobre os usuários cadastrados.
+
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id` | UUID | Chave Primária | Identificador único do usuário. |
+| `name` | String | Obrigatório | Nome completo do usuário. |
+| `email` | String | Obrigatório, Único | Endereço de e-mail do usuário. |
+| `password` | String | Obrigatório | Senha do usuário (deve ser armazenada como hash). |
+| `createdAt` | Timestamp | Obrigatório | Data e hora de criação do registro. |
+| `updatedAt` | Timestamp | Obrigatório | Data e hora da última atualização do registro. |
+
+#### Tabela: `Table` (Mesa de Jogo)
+Armazena informações sobre as mesas de RPG criadas.
+
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id` | UUID | Chave Primária | Identificador único da mesa. |
+| `title` | String | Obrigatório | Título da mesa de RPG. |
+| `rulebook` | String | Obrigatório | Nome ou URL do livro de regras usado. |
+| `accessCode` | String | Obrigatório, Único | Código de 6 caracteres para entrar na mesa. |
+| `masterId` | UUID | Chave Estrangeira (`User.id`) | ID do usuário que é o Mestre da mesa. |
+| `createdAt` | Timestamp | Obrigatório | Data e hora de criação do registro. |
+| `updatedAt` | Timestamp | Obrigatório | Data e hora da última atualização do registro. |
+
+#### Tabela: `Character` (Personagem)
+Armazena informações sobre os personagens dos jogadores em cada mesa.
+
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id` | UUID | Chave Primária | Identificador único do personagem. |
+| `name` | String | Obrigatório | Nome do personagem. |
+| `health` | Integer | Obrigatório | Pontos de vida do personagem. |
+| `mana` | Integer | Obrigatório | Pontos de mana/magia do personagem. |
+| `strength` | Integer | Obrigatório | Atributo de força. |
+| `agility` | Integer | Obrigatório | Atributo de agilidade. |
+| `intelligence` | Integer | Obrigatório | Atributo de inteligência. |
+| `userId` | UUID | Chave Estrangeira (`User.id`) | ID do usuário dono do personagem. |
+| `tableId` | UUID | Chave Estrangeira (`Table.id`) | ID da mesa à qual o personagem pertence. |
+| `createdAt` | Timestamp | Obrigatório | Data e hora de criação do registro. |
+| `updatedAt` | Timestamp | Obrigatório | Data e hora da última atualização do registro. |
+
+#### Relacionamentos entre Tabelas
+- **`User` e `Table`**: Um para Muitos (1-N).
+  - Um `User` (usuário) pode ser o mestre de várias `Table` (mesas).
+  - A coluna `Table.masterId` é a chave estrangeira que aponta para `User.id`.
+
+- **`User` e `Character`**: Um para Muitos (1-N).
+  - Um `User` pode ter vários `Character` (personagens) em diferentes mesas.
+  - A coluna `Character.userId` é a chave estrangeira que aponta para `User.id`.
+
+- **`Table` e `Character`**: Um para Muitos (1-N).
+  - Uma `Table` pode conter vários `Character`.
+  - A coluna `Character.tableId` é a chave estrangeira que aponta para `Table.id`.
+
+### 2.2. API (Endpoints)
+
+A API segue um padrão RESTful. Todas as rotas que exigem autenticação devem ser protegidas.
+
+#### Autenticação
+- **`POST /api/register`**: Registra um novo usuário.
+  - **Payload**: `{ "name": "String", "email": "String", "password": "String" }`
+  - **Validação**: `name` (obrigatório), `email` (obrigatório, formato de e-mail válido, único), `password` (obrigatório).
+  - **Resposta (Sucesso)**: `201 Created` com o objeto do usuário recém-criado (sem a senha).
+  - **Resposta (Erro)**: `400 Bad Request` se o e-mail já existir ou os dados forem inválidos.
+
+- **`POST /api/login`**: Autentica um usuário.
+  - **Payload**: `{ "email": "String", "password": "String" }`
+  - **Resposta (Sucesso)**: `200 OK` com o objeto do usuário e inicia uma sessão (ex: cookie).
+  - **Resposta (Erro)**: `400 Bad Request` para credenciais inválidas.
+
+- **`POST /api/logout`**: Encerra a sessão do usuário.
+  - **Resposta (Sucesso)**: `200 OK`.
+
+- **`GET /api/user`**: Retorna os dados do usuário autenticado.
+  - **Requer Autenticação**: Sim.
+  - **Resposta (Sucesso)**: `200 OK` com o objeto do usuário.
+  - **Resposta (Erro)**: `401 Unauthorized`.
+
+#### Mesas (Tables)
+- **`POST /api/tables`**: Cria uma nova mesa.
+  - **Requer Autenticação**: Sim.
+  - **Payload**: `{ "title": "String", "rulebook": "String" }`
+  - **Lógica**: Gera um `accessCode` único de 6 caracteres alfanuméricos. O `masterId` é o ID do usuário autenticado.
+  - **Resposta (Sucesso)**: `201 Created` com o objeto da mesa criada.
+
+- **`GET /api/tables/owned`**: Lista as mesas que o usuário autenticado mestra.
+  - **Requer Autenticação**: Sim.
+  - **Resposta (Sucesso)**: `200 OK` com um array de objetos de mesa.
+
+- **`GET /api/tables/joined`**: Lista as mesas das quais o usuário autenticado participa (mas não mestra).
+  - **Requer Autenticação**: Sim.
+  - **Resposta (Sucesso)**: `200 OK` com um array de objetos de mesa.
+
+- **`GET /api/tables/:id`**: Obtém os detalhes de uma mesa específica.
+  - **Requer Autenticação**: Sim (o usuário deve ser o mestre ou ter um personagem na mesa).
+  - **Resposta (Sucesso)**: `200 OK` com o objeto da mesa.
+  - **Resposta (Erro)**: `404 Not Found`, `403 Forbidden`.
+
+- **`POST /api/tables/join`**: Permite que um usuário entre em uma mesa usando um código de acesso.
+  - **Requer Autenticação**: Sim.
+  - **Payload**: `{ "accessCode": "String" }`
+  - **Resposta (Sucesso)**: `200 OK` com o objeto da mesa correspondente.
+  - **Resposta (Erro)**: `404 Not Found` se o código for inválido.
+
+#### Personagens (Characters)
+- **`POST /api/tables/:tableId/characters`**: Cria um novo personagem para o usuário autenticado em uma mesa.
+  - **Requer Autenticação**: Sim.
+  - **Payload**: `{ "name": "String", "health": Integer, "mana": Integer, ... }`
+  - **Resposta (Sucesso)**: `201 Created` com o objeto do personagem criado.
+
+- **`GET /api/tables/:tableId/characters`**: Lista todos os personagens de uma mesa.
+  - **Requer Autenticação**: Sim.
+  - **Resposta (Sucesso)**: `200 OK` com um array de objetos de personagem.
+
+- **`PUT /api/characters/:id`**: Atualiza os dados de um personagem.
+  - **Requer Autenticação**: Sim (o usuário deve ser o dono do personagem ou o mestre da mesa).
+  - **Payload**: Objeto com os campos a serem atualizados (ex: `{ "health": 90 }`).
+  - **Resposta (Sucesso)**: `200 OK` com o objeto do personagem atualizado.
+
+### 2.3. Comunicação em Tempo Real (WebSockets)
+
+Um servidor WebSocket é usado para comunicação em tempo real dentro de uma sessão de jogo.
+
+- **Endpoint**: `/ws`
+- **Fluxo de Conexão**:
+  1. Cliente se conecta ao WebSocket.
+  2. Cliente envia uma mensagem do tipo `join_table` para se inscrever em um canal específico da mesa.
+     - **Mensagem**: `{ "type": "join_table", "tableId": "UUID" }`
+
+#### Eventos WebSocket (Servidor -> Cliente e Cliente -> Servidor)
+- **Desenho no Quadro Branco**:
+  - **Tipo**: `whiteboard_draw`
+  - **Payload**: `{ "type": "whiteboard_draw", "data": { ... } }` (os dados contêm informações sobre o desenho, como coordenadas, cor, etc.).
+  - **Lógica**: O servidor retransmite a mensagem para todos os clientes na mesma mesa.
+
+- **Mensagem de Chat**:
+  - **Tipo**: `chat_message`
+  - **Payload**: `{ "type": "chat_message", "message": "String", "sender": "String" }`
+  - **Lógica**: O servidor adiciona um timestamp e retransmite para todos na mesa.
+
+- **Atualização de Personagem**:
+  - **Tipo**: `character_updated`
+  - **Payload**: `{ "type": "character_updated", "character": { ... } }`
+  - **Lógica**: Enviado pelo servidor sempre que um personagem é atualizado via API, para notificar todos os clientes.
+
+## 3. Frontend
+
+### 3.1. Estrutura de Páginas e Roteamento
+
+- **`/auth`**: Página de Login e Cadastro.
+  - Acessível apenas para usuários não autenticados.
+  - Se um usuário autenticado tentar acessar, ele é redirecionado para `/`.
+- **`/` (Home)**: Dashboard principal.
+  - Rota protegida. Requer autenticação.
+  - Exibe as mesas do usuário (mestrando e jogando).
+- **`/session/:tableId`**: Página da sessão de jogo.
+  - Rota protegida. Requer autenticação.
+- **`/account`**: Página de gerenciamento da conta do usuário.
+  - Rota protegida. Requer autenticação.
+
+### 3.2. Detalhamento das Telas
+
+#### Tela: Autenticação (`/auth`)
+- **Estilo**: Fundo escuro com gradiente. Um painel central com um formulário.
+- **Componentes**:
+  - **Formulário de Login**: Campos para `email` e `senha`.
+  - **Formulário de Cadastro**: Campos para `nome`, `email` e `senha`.
+  - **Botão de Alternância**: Permite alternar entre os formulários de login e cadastro.
+- **Funcionalidades**:
+  - Validação de formulário em tempo real.
+  - Exibição de mensagens de erro.
+  - Após o sucesso, redireciona para a página principal (`/`).
+- **Layout Responsivo**:
+  - **Telas Grandes (Desktop)**: Layout de duas colunas, com uma seção de "hero" (apresentação) à esquerda e o formulário de autenticação à direita.
+  - **Telas Pequenas (Mobile)**: A seção "hero" é ocultada, e o formulário de autenticação ocupa a largura total da tela.
+
+#### Tela: Dashboard (`/`)
+- **Estilo**: Navegação superior fixa, conteúdo principal com cartões.
+- **Componentes**:
+  - **Header**: Com o nome do aplicativo e um menu de usuário (dropdown) com opções "Minha Conta" e "Sair".
+  - **Botões de Ação**: "Criar Nova Mesa" e "Entrar em uma Mesa".
+  - **Lista de "Suas Mesas"**: Exibe cartões para cada mesa que o usuário mestra. Cada cartão mostra o título, livro de regras, código de acesso e um botão para entrar na sessão.
+  - **Lista de "Mesas que Participa"**: Exibe cartões para cada mesa que o usuário joga.
+- **Funcionalidades**:
+  - "Criar Nova Mesa" abre um modal com um formulário para `título` e `livro de regras`.
+  - "Entrar em uma Mesa" abre um modal para inserir o `código de acesso`.
+  - Clicar para entrar em uma mesa redireciona para `/session/:tableId`.
+- **Layout Responsivo**:
+  - As listas de mesas são exibidas em um grid de duas colunas em telas grandes e em uma única coluna em telas menores.
+
+#### Tela: Sessão de Jogo (`/session/:tableId`)
+- **Estilo**: Layout de três colunas em telas grandes, que se adapta para painéis deslizantes em telas menores.
+- **Componentes**:
+  - **Header da Sessão**: Mostra o título da mesa, o código de acesso e um botão para voltar ao dashboard.
+  - **Painel Esquerdo (Personagens)**:
+    - Lista todos os personagens na mesa.
+    - Para o Mestre: Permite editar os atributos de qualquer personagem.
+    - Para o Jogador: Permite editar apenas os atributos de seu próprio personagem.
+  - **Área Central (Quadro Branco Colaborativo)**:
+    - Uma tela onde todos os participantes podem desenhar em tempo real.
+    - As ações de desenho são enviadas via WebSocket.
+  - **Painel Direito (Chat)**:
+    - Exibe o histórico de mensagens.
+    - Um campo de entrada para enviar novas mensagens.
+    - As mensagens são enviadas e recebidas via WebSocket.
+- **Funcionalidades**:
+  - Se um jogador entra na mesa pela primeira vez, um modal para criação de personagem é exibido.
+  - Todas as interações (chat, desenho, atualização de personagem) são sincronizadas em tempo real entre todos os participantes da mesa.
+- **Layout Responsivo**:
+  - **Telas Grandes (Desktop)**: Exibe os três painéis (Personagens, Quadro Branco, Chat) lado a lado.
+  - **Telas Pequenas (Mobile)**:
+    - Apenas a área do Quadro Branco é visível por padrão.
+    - Dois botões de ícone ficam fixos nas laterais da tela para abrir os painéis de Personagens (esquerda) e Chat (direita).
+    - Ao clicar em um desses botões, o painel correspondente desliza sobre a tela, e um fundo escurecido (backdrop) cobre a área principal para dar foco ao painel aberto. O painel pode ser fechado clicando no backdrop ou em um botão "X" dentro do próprio painel.
+
+#### Tela: Minha Conta (`/account`)
+- **Estilo**: Formulário simples e centralizado.
+- **Componentes**:
+  - **Formulário de Atualização**: Campos para `nome` e `email`.
+  - **Botão "Salvar Alterações"**.
+- **Funcionalidades**:
+  - Permite que o usuário atualize suas informações de perfil.

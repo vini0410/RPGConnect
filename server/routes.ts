@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertTableSchema, insertCharacterSchema } from "@shared/schema";
+import { insertTableSchema, insertCharacterSchema, updateUserSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -172,6 +172,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: 'Invalid character data', errors: error.errors });
       } else {
         res.status(500).json({ message: 'Failed to create character' });
+      }
+    }
+  });
+
+  app.put('/api/users/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const userId = req.params.id;
+      const { name, email } = updateUserSchema.parse(req.body);
+
+      if (userId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const updatedUser = await storage.updateUser(userId, { name, email });
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid user data', errors: error.errors });
+      } else {
+        console.error('Failed to update user:', error);
+        res.status(500).json({ message: 'Failed to update user' });
       }
     }
   });

@@ -4,6 +4,9 @@ export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
+    screens: {
+      hd: "1920px",
+    },
     extend: {
       borderRadius: {
         lg: "var(--radius)",

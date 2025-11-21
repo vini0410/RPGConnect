@@ -81,7 +81,13 @@ export const insertCharacterSchema = createInsertSchema(characters).omit({
   updatedAt: true,
 });
 
+export const updateUserSchema = createInsertSchema(users).pick({
+  name: true,
+  email: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertTable = z.infer<typeof insertTableSchema>;
 export type Table = typeof tables.$inferSelect;

@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
+import { insertUserSchema, User as SelectUser, InsertUser, UpdateUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,6 +15,7 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  updateUserMutation: UseMutationResult<SelectUser, Error, UpdateUser>;
 };
 
 type LoginData = Pick<InsertUser, "email" | "password">;
@@ -81,6 +82,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const updateUserMutation = useMutation({
+    mutationFn: async (updates: Partial<SelectUser>) => {
+      if (!user) throw new Error("User not logged in");
+      const res = await apiRequest("PUT", `/api/users/${user.id}`, updates);
+      return await res.json();
+    },
+    onSuccess: (updatedUser: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], updatedUser);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been successfully updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Profile update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <AuthContext.Provider
       value={{
@@ -90,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        updateUserMutation,
       }}
     >
       {children}

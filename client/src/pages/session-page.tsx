@@ -190,9 +190,12 @@ export default function SessionPage() {
       {/* Session Content */}
       <main className="flex-grow flex flex-row p-4 gap-4 overflow-hidden relative">
         {/* Backdrop for mobile panel view */}
+        {/* Backdrop for mobile panel view */}
+        {/* Backdrop for mobile panel view */}
+        {/* Backdrop for mobile panel view */}
         {(isLeftPanelOpen || isRightPanelOpen) && (
           <div
-            className="fixed inset-0 bg-black/60 z-10 2xl:hidden"
+            className="fixed inset-0 bg-black/60 z-30 hd:hidden"
             onClick={() => {
               setIsLeftPanelOpen(false);
               setIsRightPanelOpen(false);
@@ -205,8 +208,8 @@ export default function SessionPage() {
         <Button
           variant="secondary"
           size="icon"
-          className="2xl:hidden fixed top-1/2 -translate-y-1/2 left-0 z-20 rounded-l-none shadow-lg"
-          onClick={() => setIsLeftPanelOpen(true)}
+          className="hd:hidden fixed top-1/2 -translate-y-1/2 left-0 z-40 rounded-l-none shadow-lg"
+          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
           aria-label="Open characters panel"
         >
           <Users className="w-5 h-5" />
@@ -214,8 +217,8 @@ export default function SessionPage() {
         <Button
           variant="secondary"
           size="icon"
-          className="2xl:hidden fixed top-1/2 -translate-y-1/2 right-0 z-20 rounded-r-none shadow-lg"
-          onClick={() => setIsRightPanelOpen(true)}
+          className="hd:hidden fixed top-1/2 -translate-y-1/2 right-0 z-40 rounded-r-none shadow-lg"
+          onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
           aria-label="Open chat panel"
         >
           <MessageSquare className="w-5 h-5" />
@@ -224,16 +227,15 @@ export default function SessionPage() {
         {/* Characters Panel */}
         <aside
           className={`
-            absolute top-0 left-0 h-full w-full max-w-[400px] bg-gray-800 rounded-r-lg 2xl:rounded-lg border-r 2xl:border border-gray-700 flex flex-col z-20
+            bg-gray-800 rounded-lg border-gray-700 flex-col z-50
             transition-transform duration-300 ease-in-out
-            2xl:static 2xl:translate-x-0
-            ${isLeftPanelOpen ? "translate-x-0" : "-translate-x-full"}
+            ${isLeftPanelOpen ? "flex" : "hidden"} hd:flex hd:w-[400px]
           `}
         >
           <Button
             variant="ghost"
             size="icon"
-            className="2xl:hidden absolute top-2 right-2 text-gray-400 hover:text-white"
+            className="hd:hidden absolute top-2 right-2 text-gray-400 hover:text-white"
             onClick={() => setIsLeftPanelOpen(false)}
             aria-label="Close characters panel"
           >
@@ -256,16 +258,15 @@ export default function SessionPage() {
         {/* Chat Panel */}
         <aside
           className={`
-            absolute top-0 right-0 h-full w-full max-w-[400px] bg-gray-800 rounded-l-lg 2xl:rounded-lg border-l 2xl:border border-gray-700 flex flex-col z-20
+            bg-gray-800 rounded-lg border-gray-700 flex-col z-50
             transition-transform duration-300 ease-in-out
-            2xl:static 2xl:translate-x-0
-            ${isRightPanelOpen ? "translate-x-0" : "translate-x-full"}
+            ${isRightPanelOpen ? "flex" : "hidden"} hd:flex hd:w-[400px]
           `}
         >
           <Button
             variant="ghost"
             size="icon"
-            className="2xl:hidden absolute top-2 left-2 text-gray-400 hover:text-white"
+            className="hd:hidden absolute top-2 left-2 text-gray-400 hover:text-white"
             onClick={() => setIsRightPanelOpen(false)}
             aria-label="Close chat panel"
           >

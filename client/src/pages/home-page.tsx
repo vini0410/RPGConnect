@@ -5,7 +5,15 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dice6, Plus, LogIn, Settings, Users, Key, ArrowRight, User } from "lucide-react";
+import { Dice6, Plus, LogIn, Users, Key, ArrowRight, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CreateTableModal } from "@/components/dashboard/create-table-modal";
 import { JoinTableModal } from "@/components/dashboard/join-table-modal";
 import { Table } from "@shared/schema";
@@ -45,17 +53,33 @@ export default function HomePage() {
             <div className="flex items-center space-x-4">
               <span className="text-gray-300">{user?.name}</span>
               <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="bg-gray-900 hover:bg-gray-700 text-gray-300 hover:text-white"
-                >
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mr-2">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  Logout
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="bg-gray-900 hover:bg-gray-700 text-gray-300 hover:text-white rounded-full"
+                    >
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 bg-gray-800 border-gray-700 text-white">
+                    <DropdownMenuItem
+                      onClick={() => setLocation("/account")}
+                      className="hover:bg-gray-700 cursor-pointer"
+                    >
+                      My Account
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="hover:bg-gray-700 cursor-pointer"
+                    >
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -73,38 +97,27 @@ export default function HomePage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div className="flex gap-4 mb-8">
           <Button
             onClick={() => setShowCreateTable(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-6 h-auto text-left justify-start"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-12 text-left justify-start"
           >
             <div className="flex flex-col items-start">
-              <Plus className="text-2xl mb-3" />
-              <h3 className="font-semibold text-lg">Create New Table</h3>
-              <p className="text-blue-100 text-sm">Start a new RPG session</p>
+              <Plus className="text-2xl mb-2" />
+              <h3 className="font-semibold">Create New Table</h3>
+              <p className="text-blue-100 text-sm font-light">Start a new RPG session</p>
             </div>
           </Button>
           
           <Button
             onClick={() => setShowJoinTable(true)}
             variant="outline"
-            className="bg-gray-800 hover:bg-gray-700 border-gray-600 text-white p-6 h-auto text-left justify-start"
+            className="bg-gray-800 hover:bg-gray-700 border-gray-600 text-white p-12 text-left justify-start"
           >
             <div className="flex flex-col items-start">
-              <LogIn className="text-purple-500 text-2xl mb-3" />
-              <h3 className="font-semibold text-lg">Join Table</h3>
-              <p className="text-gray-400 text-sm">Enter an access code</p>
-            </div>
-          </Button>
-          
-          <Button
-            variant="outline"
-            className="bg-gray-800 hover:bg-gray-700 border-gray-600 text-white p-6 h-auto text-left justify-start"
-          >
-            <div className="flex flex-col items-start">
-              <Settings className="text-green-500 text-2xl mb-3" />
-              <h3 className="font-semibold text-lg">Profile Settings</h3>
-              <p className="text-gray-400 text-sm">Manage your account</p>
+              <LogIn className="text-purple-500 text-2xl mb-2" />
+              <h3 className="font-semibold">Join Table</h3>
+              <p className="text-gray-400 text-sm font-light">Enter an access code</p>
             </div>
           </Button>
         </div>
