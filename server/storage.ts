@@ -13,6 +13,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
+  deleteUserByEmail(email: string): Promise<void>;
   
   getTable(id: string): Promise<Table | undefined>;
   getTableByAccessCode(accessCode: string): Promise<Table | undefined>;
@@ -72,6 +73,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
+  }
+
+  async deleteUserByEmail(email: string): Promise<void> {
+    await db.delete(users).where(eq(users.email, email));
   }
 
   async getAllTables(): Promise<Table[]> {

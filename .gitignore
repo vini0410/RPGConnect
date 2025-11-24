@@ -7,3 +7,5 @@ vite.config.ts.*
 /generated/prisma
 .env
 .env.local
+/coverage/*
+/tmp_server_dist/*

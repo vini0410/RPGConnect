@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
@@ -16,6 +17,12 @@ export default defineConfig({
         ]
       : []),
   ],
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: "client/src/setupTests.ts",
+    include: ["client/src/**/*.test.tsx", "server/**/*.test.ts", "shared/**/*.test.ts"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -23,7 +30,6 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
-  root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
