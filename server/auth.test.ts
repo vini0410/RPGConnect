@@ -87,22 +87,18 @@ vi.mock('passport', () => {
       }
       next();
     },
-    authenticate: vi.fn((strategy, options, callback) => {
-      // This is the outer function, it returns the actual middleware
+    authenticate: vi.fn((strategy, callback) => {
+      // When using a custom callback, passport.authenticate returns a middleware
+      // that does nothing but call the provided callback. The callback is then
+      // responsible for the entire response lifecycle (sending a response, etc.).
       return (req, res, next) => {
-        // This is the actual middleware that runs
-        let userResult = null; // Default to no user
-
-        if (strategy === 'local') {
-          // For 'local' strategy, assume success for default behavior
-          userResult = { id: 'mock-auth-user-id', email: 'authenticated@example.com', name: 'Authenticated Mock User' };
-          // The 'should not login with incorrect credentials' test will mock this to return `false`
-        }
-
-        if (callback) { // The (err, user, info) => {} from server/auth.ts
+        const userResult = { id: 'mock-auth-user-id', email: 'authenticated@example.com', name: 'Authenticated Mock User' };
+        if (callback) {
+          // The test for incorrect credentials will override this with mockImplementationOnce.
           callback(null, userResult, {});
+        } else {
+          next(new Error('Passport authenticate mock called without a callback'));
         }
-        next(); // Always call next to continue the chain, regardless of authentication outcome
       };
     }),
     use: vi.fn(),
@@ -146,6 +142,7 @@ describe("Authentication", () => {
   // Reset mocks before each test to ensure isolation
   beforeEach(() => {
     vi.clearAllMocks();
+    currentAuthenticatedUser = undefined;
   });
   it("should register a new user (MOCKED DB)", async () => {
     const user = {
@@ -210,7 +207,7 @@ describe("Authentication", () => {
     const response = await request(server)
       .post("/api/login")
       .send({ email: user.email, password: user.password });
-
+    debugger;
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty("id");
     expect(response.body.email).toBe(user.email);
@@ -222,25 +219,26 @@ describe("Authentication", () => {
 
   it("should not login with incorrect credentials", async () => {
     // Override the default successful authenticate mock for this test
-    (passport.authenticate as ReturnType<typeof vi.fn>).mockImplementationOnce((strategy, options, callback) => (req, res, next) => {
+    (passport.authenticate as ReturnType<typeof vi.fn>).mockImplementationOnce((strategy, callback) => (req, res, next) => {
       if (strategy === 'local' && callback) {
         // Simulate authentication failure
         callback(null, false, { message: 'Invalid credentials' });
       } else {
-        next(); // Fallback for other strategies or when no callback
+        next(new Error('Mock for incorrect credentials called incorrectly'));
       }
     });
 
     const response = await request(server)
       .post("/api/login")
       .send({ email: "wrong@example.com", password: "wrongpassword" });
-
+    debugger;
     expect(response.status).toBe(400);
     expect(response.text).toBe("Invalid email or password");
   });
 
   it("should return 401 for /api/user if not authenticated", async () => {
     const response = await request(server).get("/api/user");
+    debugger;
     expect(response.status).toBe(401);
   });
 

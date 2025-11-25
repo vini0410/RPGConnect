@@ -9,3 +9,4 @@ vite.config.ts.*
 .env.local
 /coverage/*
 /tmp_server_dist/*
+.vscode/*
