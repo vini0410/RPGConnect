@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Pen, Eraser, Square, Trash2, Palette } from "lucide-react";
+import { Pen, Eraser, Square, Trash2 } from "lucide-react"; // Removed Palette
 
 interface CollaborativeWhiteboardProps {
   ws: WebSocket | null;
@@ -21,7 +21,7 @@ export function CollaborativeWhiteboard({ ws }: CollaborativeWhiteboardProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<"pen" | "eraser" | "shape">("pen");
   const [color, setColor] = useState("#3b82f6");
-  const [brushSize, setBrushSize] = useState(2);
+  const brushSize = 2; // Made constant, removed useState declaration
 
   // Estado para armazenar as coordenadas anteriores
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null);

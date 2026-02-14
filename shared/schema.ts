@@ -1,6 +1,6 @@
 import { pgTable, text, integer, timestamp, uuid} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { createInsertSchema } from "drizzle-zod";
+// import { createInsertSchema } from "drizzle-zod"; // No longer using drizzle-zod's createInsertSchema for Insert types
 import { z } from "zod";
 
 export const users = pgTable("User", {
@@ -60,36 +60,35 @@ export const charactersRelations = relations(characters, ({ one }) => ({
   }),
 }));
 
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+// Define Insert types directly using Drizzle's $inferInsert and Omit
+export type InsertUser = Omit<typeof users.$inferInsert, "id" | "createdAt" | "updatedAt">;
+export type InsertTable = Omit<typeof tables.$inferInsert, "id" | "accessCode" | "masterId" | "createdAt" | "updatedAt">;
+export type InsertCharacter = Omit<typeof characters.$inferInsert, "id" | "userId" | "tableId" | "createdAt" | "updatedAt">;
+
+
+// Zod schema for validation (frontend/API input), explicitly defining fields
+export const insertTableSchema = z.object({
+  title: z.string().min(1, { message: "Title is required." }),
+  rulebook: z.string().min(1, { message: "Rulebook is required." }),
 });
 
-export const insertTableSchema = createInsertSchema(tables).omit({
-  id: true,
-  accessCode: true,
-  masterId: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertCharacterSchema = z.object({
+  name: z.string().min(1, { message: "Name is required." }),
+  health: z.number().int().positive({ message: "Health must be a positive integer." }),
+  mana: z.number().int().positive({ message: "Mana must be a positive integer." }),
+  strength: z.number().int().positive({ message: "Strength must be a positive integer." }),
+  agility: z.number().int().positive({ message: "Agility must be a positive integer." }),
+  intelligence: z.number().int().positive({ message: "Intelligence must be a positive integer." }),
+  // userId and tableId are set by the API, not part of the direct input
 });
 
-export const insertCharacterSchema = createInsertSchema(characters).omit({
-  id: true,
-  userId: true,
-  createdAt: true,
-  updatedAt: true,
+export const updateUserSchema = z.object({
+  name: z.string().min(1, { message: "Name is required." }).optional(), // Optional for partial updates
+  email: z.string().email({ message: "Invalid email address." }).optional(), // Optional for partial updates
 });
 
-export const updateUserSchema = createInsertSchema(users).pick({
-  name: true,
-  email: true,
-});
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type User = typeof users.$inferSelect;
-export type InsertTable = z.infer<typeof insertTableSchema>;
 export type Table = typeof tables.$inferSelect;
-export type InsertCharacter = z.infer<typeof insertCharacterSchema>;
 export type Character = typeof characters.$inferSelect;

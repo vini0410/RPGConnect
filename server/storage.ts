@@ -1,6 +1,6 @@
-import { users, tables, characters, type User, type InsertUser, type Table, type InsertTable, type Character, type InsertCharacter } from "@shared/schema";
+import { users, tables, characters, type User, type Table, type Character, InsertUser, InsertTable, InsertCharacter } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm"; // Removed and, or
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -61,7 +61,7 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values(insertUser as typeof users.$inferInsert)
       .returning();
     return user;
   }
@@ -109,7 +109,7 @@ export class DatabaseStorage implements IStorage {
   async createTable(table: InsertTable & { masterId: string, accessCode: string }): Promise<Table> {
     const [newTable] = await db
       .insert(tables)
-      .values(table)
+      .values(table as typeof tables.$inferInsert)
       .returning();
     return newTable;
   }
@@ -144,7 +144,7 @@ export class DatabaseStorage implements IStorage {
   async createCharacter(character: InsertCharacter & { userId: string }): Promise<Character> {
     const [newCharacter] = await db
       .insert(characters)
-      .values(character)
+      .values(character as typeof characters.$inferInsert)
       .returning();
     return newCharacter;
   }

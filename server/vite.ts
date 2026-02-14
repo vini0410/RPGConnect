@@ -1,9 +1,9 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
+import { createServer as createViteServer, createLogger, defineConfig } from "vite"; // Import defineConfig
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+import viteConfig from "../vite.config"; // This imports the vitest-configured viteConfig
 import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
@@ -26,8 +26,27 @@ export async function setupVite(app: Express, server: Server) {
     allowedHosts: true as const,
   };
 
+  // Extract only the Vite-compatible parts from the shared config
+  // and use defineConfig from vite to ensure correct type inference
+  const serverViteConfig = defineConfig({
+    plugins: viteConfig.plugins, // Re-use the plugins array from the shared config
+    resolve: viteConfig.resolve,
+    build: {
+      outDir: viteConfig.build?.outDir,
+      emptyOutDir: viteConfig.build?.emptyOutDir,
+    },
+    server: serverOptions,
+    appType: "custom",
+    // Ensure that any Vitest-specific properties are explicitly omitted or transformed
+    // before passing to createViteServer.
+    // For example, if viteConfig contained an incompatible 'test' property,
+    // we would explicitly exclude it here, but we already handled it by destructuring.
+    // However, if there are other Vitest-specific properties in the root, they should be excluded.
+    // For now, assume viteConfig.plugins, resolve, build are compatible parts.
+  });
+
   const vite = await createViteServer({
-    ...viteConfig,
+    ...serverViteConfig, // Use the explicitly defined serverViteConfig
     configFile: false,
     customLogger: {
       ...viteLogger,
@@ -36,8 +55,6 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-    server: serverOptions,
-    appType: "custom",
   });
 
   app.use(vite.middlewares);

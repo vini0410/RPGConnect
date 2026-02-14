@@ -1,10 +1,10 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { defineConfig as defineVitestConfig } from 'vitest/config';
 
-export default defineConfig({
+export default defineVitestConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -15,7 +15,7 @@ export default defineConfig({
             m.cartographer(),
           ),
         ]
-      : []),
+      : []).flat(), // Flatten the array here
   ],
   test: {
     globals: true,

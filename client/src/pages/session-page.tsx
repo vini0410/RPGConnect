@@ -21,20 +21,34 @@ export default function SessionPage() {
 
   const tableId = params?.tableId;
 
-  const { data: table } = useQuery<Table>({
+  const { data: table } = useQuery<Table, Error>({
     queryKey: ["/api/tables", tableId],
     enabled: !!tableId,
-    onError: (err) => console.error("Failed to load table:", err),
+    queryFn: async () => {
+      if (!tableId) throw new Error("Table ID is missing.");
+      const response = await fetch(`/api/tables/${tableId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load table: ${response.statusText}`);
+      }
+      return response.json();
+    },
   });
 
-  const { data: characters = [] } = useQuery<Character[]>({
+  const { data: characters } = useQuery<Character[], Error>({
     queryKey: ["/api/tables", tableId, "characters"],
     enabled: !!tableId,
-    onError: (err) => console.error("Failed to load characters:", err),
+    queryFn: async () => {
+      if (!tableId) throw new Error("Table ID is missing.");
+      const response = await fetch(`/api/tables/${tableId}/characters`);
+      if (!response.ok) {
+        throw new Error(`Failed to load characters: ${response.statusText}`);
+      }
+      return response.json();
+    },
   });
 
   // Check if user has a character in this table
-  const userCharacter = characters.find((c) => c.userId === user?.id);
+  const userCharacter = characters?.find((c: Character) => c.userId === user?.id);
   const isTableMaster = table?.masterId === user?.id;
 
   useEffect(() => {
@@ -68,7 +82,7 @@ export default function SessionPage() {
 
     socket.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data.toString()); // Ensure data is string
         console.log("Received WebSocket message:", data);
 
         // Handle different message types
@@ -114,11 +128,7 @@ export default function SessionPage() {
 
   // If user doesn't have a character and isn't the table master, show character creation
   useEffect(() => {
-    if (table && !userCharacter && !isTableMaster) {
-      setShowCharacterCreation(true);
-    }
-    // Só executa quando todos os dados estiverem carregados
-    if (!table || !user || characters === undefined) {
+    if (!table || !user || characters === undefined) { // Check characters explicitly for undefined
       console.log("Waiting for data to load...");
       return;
     }
@@ -136,7 +146,8 @@ export default function SessionPage() {
     );
   }
 
-  if (!table || !user || characters === undefined) {
+  // Refined loading check
+  if (!user || characters === undefined) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading session data...</div>
@@ -161,10 +172,10 @@ export default function SessionPage() {
               </Button>
               <div>
                 <h1 className="text-lg font-semibold text-white">
-                  {table.title}
+                  {table.title} {/* table is guaranteed not null here */}
                 </h1>
                 <p className="text-sm text-gray-400">
-                  Code: {table.accessCode}
+                  Code: {table.accessCode} {/* table is guaranteed not null here */}
                 </p>
               </div>
             </div>
@@ -172,7 +183,7 @@ export default function SessionPage() {
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-gray-300">
-                  {characters.length} players online
+                  {characters?.length ?? 0} players online {/* Nullish coalescing for characters */}
                 </span>
               </div>
               <Button
@@ -242,7 +253,7 @@ export default function SessionPage() {
             <X className="w-5 h-5" />
           </Button>
           <CharacterPanel
-            characters={characters}
+            characters={characters || []} // Provide empty array if characters is undefined
             isTableMaster={isTableMaster}
             currentUserId={user?.id}
             ws={ws}

@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertTableSchema, insertCharacterSchema, updateUserSchema } from "@shared/schema";
+import { insertTableSchema, insertCharacterSchema, updateUserSchema, InsertCharacter } from "@shared/schema"; // Import InsertCharacter
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -25,9 +25,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const tables = await storage.getTablesByMaster(req.user.id);
-      res.json(tables);
+      return res.json(tables);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch owned tables' });
+      return res.status(500).json({ message: 'Failed to fetch owned tables' });
     }
   });
 
@@ -36,9 +36,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const tables = await storage.getTablesByUser(req.user.id);
-      res.json(tables);
+      return res.json(tables);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch joined tables' });
+      return res.status(500).json({ message: 'Failed to fetch joined tables' });
     }
   });
 
@@ -60,32 +60,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessCode
       });
       
-      res.status(201).json(table);
+      return res.status(201).json(table);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: 'Invalid table data', errors: error.errors });
+        return res.status(400).json({ message: 'Invalid table data', errors: error.errors });
       } else {
-        res.status(500).json({ message: 'Failed to create table' });
+        return res.status(500).json({ message: 'Failed to create table' });
       }
     }
   });
 
-  app.get('/api/tables', async (req, res) => {
-    
+  app.get('/api/tables', async (_req, res) => { // Removed unused req
     try {
       const tables = await storage.getAllTables();
       if (!tables) {
         return res.status(404).json({ message: 'No tables found' });
       }
-      
-      res.json(tables);
+      return res.json(tables);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch table' });
+      return res.status(500).json({ message: 'Failed to fetch table' });
     }
   });
 
   app.get('/api/tables/:id', async (req, res) => {
-    // if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
       const table = await storage.getTable(req.params.id);
@@ -94,16 +92,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user is master or has a character in this table
-      const userCharacters = await storage.getCharactersByUser(req.user.id);
-      const hasCharacterInTable = userCharacters.some(c => c.tableId === table.id);
+      // const userCharacters = await storage.getCharactersByUser(req.user.id); // Removed unused variable
+      // const hasCharacterInTable = userCharacters.some(c => c.tableId === table.id); // Removed unused variable
       
       // if (table.masterId !== req.user.id && !hasCharacterInTable) {
       //   return res.status(403).json({ message: 'Access denied' });
       // }
       
-      res.json(table);
+      return res.json(table);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch table' });
+      return res.status(500).json({ message: 'Failed to fetch table' });
     }
   });
 
@@ -121,9 +119,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Invalid access code' });
       }
       
-      res.json(table);
+      return res.json(table);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to join table' });
+      return res.status(500).json({ message: 'Failed to join table' });
     }
   });
 
@@ -138,9 +136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const characters = await storage.getCharactersByTable(req.params.tableId);
-      res.json(characters);
+      return res.json(characters);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch characters' });
+      return res.status(500).json({ message: 'Failed to fetch characters' });
     }
   });
 
@@ -154,11 +152,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const characterData = insertCharacterSchema.parse(req.body);
+      // Cast the object literal to match the expected type
       const character = await storage.createCharacter({
         ...characterData,
         userId: req.user.id,
         tableId: req.params.tableId
-      });
+      } as InsertCharacter & { userId: string, tableId: string }); // Explicit cast
       
       // Broadcast character creation to all clients in the table
       broadcastToTable(req.params.tableId, {
@@ -166,12 +165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         character
       });
       
-      res.status(201).json(character);
+      return res.status(201).json(character);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: 'Invalid character data', errors: error.errors });
+        return res.status(400).json({ message: 'Invalid character data', errors: error.errors });
       } else {
-        res.status(500).json({ message: 'Failed to create character' });
+        return res.status(500).json({ message: 'Failed to create character' });
       }
     }
   });
@@ -179,22 +178,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/users/:id', async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
+    const userId = req.params.id;
+    if (userId !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     try {
-      const userId = req.params.id;
       const { name, email } = updateUserSchema.parse(req.body);
 
-      if (userId !== req.user.id) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
       const updatedUser = await storage.updateUser(userId, { name, email });
-      res.json(updatedUser);
+      return res.json(updatedUser);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: 'Invalid user data', errors: error.errors });
+        return res.status(400).json({ message: 'Invalid user data', errors: error.errors });
       } else {
         console.error('Failed to update user:', error);
-        res.status(500).json({ message: 'Failed to update user' });
+        return res.status(500).json({ message: 'Failed to update user' });
       }
     }
   });
@@ -227,9 +226,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         character: updatedCharacter
       });
       
-      res.json(updatedCharacter);
+      return res.json(updatedCharacter);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to update character' });
+      return res.status(500).json({ message: 'Failed to update character' });
     }
   });
 

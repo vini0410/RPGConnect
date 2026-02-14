@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { Buffer } from "buffer"; // Explicitly import Buffer
 
 declare global {
   namespace Express {
@@ -23,7 +24,7 @@ async function hashPassword(password: string) {
 
 async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
+  const hashedBuf = Buffer.from(hashed, "hex"); // hashedBuf should now be recognized
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
@@ -53,7 +54,7 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     const user = await storage.getUser(id);
     done(null, user);
   });
@@ -70,14 +71,14 @@ export function setupAuth(app: Express) {
         password: await hashPassword(req.body.password),
       });
 
-      req.login(user, (err) => {
+      return req.login(user, (err) => {
         if (err) return next(err);
         const { password, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
+        return res.status(201).json(userWithoutPassword);
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
-      if (error.code === '23505') {
+      if (error instanceof Error && 'code' in error && (error as any).code === '23505') {
         return res.status(400).send("Email already exists");
       }
       return res.status(500).send("Internal server error");
@@ -85,27 +86,27 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: any, user: SelectUser | false | undefined, _info: any) => {
       if (err) return next(err);
       if (!user) return res.status(400).send("Invalid email or password");
       
-      req.login(user, (loginErr) => {
+      return req.login(user, (loginErr) => {
         if (loginErr) return next(loginErr);
         const { password, ...userWithoutPassword } = user;
-        res.status(200).json(userWithoutPassword);
+        return res.status(200).json(userWithoutPassword);
       });
     })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
+    return req.logout((err) => {
       if (err) return next(err);
-      res.sendStatus(200);
+      return res.sendStatus(200);
     });
   });
 
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
+    return res.json(req.user);
   });
 }

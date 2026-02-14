@@ -3,15 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card"; // Removed CardHeader, CardTitle
 import { Badge } from "@/components/ui/badge";
 import { Dice6, Plus, LogIn, Users, Key, ArrowRight, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  // Removed DropdownMenuLabel, DropdownMenuSeparator
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreateTableModal } from "@/components/dashboard/create-table-modal";

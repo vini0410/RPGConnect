@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser, UpdateUser } from "@shared/schema";
+import { User as SelectUser, InsertUser, UpdateUser } from "@shared/schema"; // Removed insertUserSchema
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,7 +15,7 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
-  updateUserMutation: UseMutationResult<SelectUser, Error, UpdateUser>;
+  updateUserMutation: UseMutationResult<SelectUser, Error, UpdateUser>; // UpdateUser already uses correct type
 };
 
 type LoginData = Pick<InsertUser, "email" | "password">;
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async (updates: Partial<SelectUser>) => {
+    mutationFn: async (updates: UpdateUser) => { // Changed type to UpdateUser
       if (!user) throw new Error("User not logged in");
       const res = await apiRequest("PUT", `/api/users/${user.id}`, updates);
       return await res.json();

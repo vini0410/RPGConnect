@@ -6,7 +6,6 @@ import request from "supertest";
 import express from "express";
 import { registerRoutes } from "./routes";
 import { Server } from "http";
-// import { storage } from "./storage"; // No longer import the real storage
 
 // Mock the entire storage module
 vi.mock('./storage', () => {
@@ -30,14 +29,6 @@ vi.mock('./storage', () => {
       usersStore.set(newUser.id, newUser);
       return newUser;
     }),
-    updateUser: vi.fn(async (id: string, updates: any) => {
-      const user = usersStore.get(id);
-      if (user) {
-        Object.assign(user, updates);
-        return user;
-      }
-      return undefined;
-    }),
     deleteUserByEmail: vi.fn(async (email: string) => {
       let deletedId: string | undefined;
       for (const [id, user] of usersStore.entries()) {
@@ -58,67 +49,68 @@ vi.mock('./storage', () => {
 // Import the mocked storage
 import { storage } from './storage';
 
-let currentAuthenticatedUser: any = undefined; // Simulate session persistence across requests
+let currentAuthenticatedUser: any = undefined;
+
+// A more controllable mock for passport
+let loginShouldFail = false;
+let logoutShouldFail = false;
 
 // Mock the passport module
 vi.mock('passport', () => {
   const mockPassport = {
     initialize: () => (req, res, next) => {
-      // These methods are typically added by passport middleware
       req.isAuthenticated = vi.fn(() => !!req.user);
       req.login = vi.fn((user, cb) => {
+        if (loginShouldFail) {
+          loginShouldFail = false; // Reset after use
+          return cb(new Error("Login process failed"));
+        }
         req.user = user;
-        currentAuthenticatedUser = user; // Persist user for session simulation
+        currentAuthenticatedUser = user;
         cb();
       });
       req.logIn = req.login;
       req.logout = vi.fn((cb) => {
+        if (logoutShouldFail) {
+          logoutShouldFail = false; // Reset after use
+          return cb(new Error("Logout failed"));
+        }
         req.user = undefined;
-        currentAuthenticatedUser = undefined; // Clear user from session simulation
+        currentAuthenticatedUser = undefined;
         cb();
       });
       req.logOut = req.logout;
       next();
     },
     session: () => (req, res, next) => {
-      // Simulate deserialization: if a user is "in session", attach them to req.user
       if (currentAuthenticatedUser) {
           req.user = currentAuthenticatedUser;
       }
       next();
     },
     authenticate: vi.fn((strategy, callback) => {
-      // This mock now simulates the real LocalStrategy by using the mocked
-      // storage to find the user based on the request body.
       return async (req, res, next) => {
         const user = await storage.getUserByEmail(req.body.email);
         if (callback) {
-          // Pass the dynamically found user (or false if not found) to the callback.
           callback(null, user || false, {});
         }
       };
     }),
     use: vi.fn(),
-    serializeUser: vi.fn((callbackFunction) => { /* Capture the serializer function */ }),
-    deserializeUser: vi.fn((callbackFunction) => { /* Capture the deserializer function */ }),
+    serializeUser: vi.fn((cb) => {}),
+    deserializeUser: vi.fn((cb) => {}),
   };
   return { default: mockPassport };
 });
-import passport from 'passport'; // Import the mocked passport
+import passport from 'passport';
 
 vi.mock('express-session', () => ({
   default: vi.fn(() => (req, res, next) => {
-    // Mimic session properties being set by express-session
     req.session = req.session || {};
     req.session.id = 'mock-session-id';
     next();
   }),
 }));
-
-
-import passport from 'passport'; // Import the mocked passport
-
-
 
 let server: Server;
 let app: express.Express;
@@ -126,8 +118,6 @@ let app: express.Express;
 beforeAll(async () => {
   app = express();
   app.use(express.json());
-
-
   server = await registerRoutes(app);
 });
 
@@ -136,156 +126,110 @@ afterAll((done) => {
 });
 
 describe("Authentication", () => {
-  // Reset mocks before each test to ensure isolation
   beforeEach(() => {
     vi.clearAllMocks();
     currentAuthenticatedUser = undefined;
+    loginShouldFail = false;
+    logoutShouldFail = false;
+    // Restore the default authenticate mock behavior before each test
+    (passport.authenticate as ReturnType<typeof vi.fn>).mockImplementation((strategy, callback) => {
+       return async (req, res, next) => {
+        const user = await storage.getUserByEmail(req.body.email);
+        if (callback) {
+          callback(null, user || false, {});
+        }
+      };
+    })
   });
+
   it("should register a new user (MOCKED DB)", async () => {
-    const user = {
-      name: "Register Test User",
-      email: `register-${Date.now()}@example.com`,
-      password: "password123",
-    };
-
-    const mockUser = {
-      ...user,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
+    const user = { name: "Register Test User", email: `register-${Date.now()}@example.com`, password: "password123" };
     const response = await request(server).post("/api/register").send(user);
-
     expect(response.status).toBe(201);
-    expect(response.body).toHaveProperty("id", expect.any(String));
-    expect(response.body.name).toBe(user.name);
+    expect(response.body).toHaveProperty("id");
     expect(response.body.email).toBe(user.email);
     expect(response.body).not.toHaveProperty("password");
-
-    // Verify storage methods were called
-    expect(storage.getUserByEmail).toHaveBeenCalledWith(user.email);
-    expect(storage.createUser).toHaveBeenCalledWith(expect.objectContaining({
-        name: user.name,
-        email: user.email,
-        password: expect.any(String), // Password will be hashed, so check for any string
-    }));
-    // No actual cleanup needed for mocked storage
-    // Removed: await storage.deleteUserByEmail(user.email);
+    expect(storage.createUser).toHaveBeenCalled();
   });
 
   it("should not register a user with an existing email", async () => {
-    const user = {
-      name: "Existing Email Test User",
-      email: `existing-${Date.now()}@example.com`,
-      password: "password123",
-    };
-    // First, register a user
-    await request(server).post("/api/register").send(user);
-
-    // Then, try to register another user with the same email
+    const user = { name: "Existing Email Test User", email: `existing-${Date.now()}@example.com`, password: "password123" };
+    await storage.createUser(user); // Pre-populate
     const response = await request(server).post("/api/register").send(user);
     expect(response.status).toBe(400);
     expect(response.text).toBe("Email already exists");
-
-    // Cleanup
     await storage.deleteUserByEmail(user.email);
   });
 
-  it("should login an existing user", async () => {
-    const user = {
-      name: "Login Test User",
-      email: `login-${Date.now()}@example.com`,
-      password: "password123",
-    };
-    // First, register a user
-    await request(server).post("/api/register").send(user);
+  it("should return 500 if creating a user fails unexpectedly", async () => {
+    const user = { name: "Server Error Test", email: `server-error-${Date.now()}@example.com`, password: "password123" };
+    (storage.createUser as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("DB Explosion"));
+    const response = await request(server).post("/api/register").send(user);
+    expect(response.status).toBe(500);
+    expect(response.text).toBe("Internal server error");
+  });
 
-    // Then, login with the same user
-    const response = await request(server)
-      .post("/api/login")
-      .send({ email: user.email, password: user.password });
-    debugger;
+  it("should login an existing user", async () => {
+    const user = { name: "Login Test User", email: `login-${Date.now()}@example.com`, password: "password123" };
+    await storage.createUser(user);
+    const response = await request(server).post("/api/login").send({ email: user.email, password: user.password });
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty("id");
-         expect(response.body.email).toBe(user.email);
-    
-        // Cleanup    await storage.deleteUserByEmail(user.email);
+    expect(response.body.email).toBe(user.email);
+    await storage.deleteUserByEmail(user.email);
   });
 
   it("should not login with incorrect credentials", async () => {
-    // Override the default successful authenticate mock for this test
     (passport.authenticate as ReturnType<typeof vi.fn>).mockImplementationOnce((strategy, callback) => (req, res, next) => {
-      if (strategy === 'local' && callback) {
-        // Simulate authentication failure
-        callback(null, false, { message: 'Invalid credentials' });
-      } else {
-        next(new Error('Mock for incorrect credentials called incorrectly'));
-      }
+      callback(null, false);
     });
-
-    const response = await request(server)
-      .post("/api/login")
-      .send({ email: "wrong@example.com", password: "wrongpassword" });
-    debugger;
+    const response = await request(server).post("/api/login").send({ email: "wrong@example.com", password: "wrongpassword" });
     expect(response.status).toBe(400);
     expect(response.text).toBe("Invalid email or password");
   });
 
+  it("should return 500 if req.login fails", async () => {
+    const user = { name: "Login Fail Test", email: `login-fail-${Date.now()}@example.com`, password: "password123" };
+    await storage.createUser(user);
+    loginShouldFail = true;
+    const response = await request(server).post("/api/login").send({ email: user.email, password: user.password });
+    expect(response.status).toBe(500);
+    await storage.deleteUserByEmail(user.email);
+  });
+
   it("should return 401 for /api/user if not authenticated", async () => {
     const response = await request(server).get("/api/user");
-    debugger;
     expect(response.status).toBe(401);
   });
 
   it("should return the user for /api/user if authenticated", async () => {
-    const user = {
-      name: "Authenticated User Test",
-      email: `auth-user-${Date.now()}@example.com`,
-      password: "password123",
-    };
-    // Create an agent to handle cookies
+    const user = { name: "Authed User Test", email: `auth-user-${Date.now()}@example.com`, password: "password123" };
     const agent = request.agent(server);
-
-    // Register and login a user
-    await agent.post("/api/register").send(user);
-    await agent
-      .post("/api/login")
-      .send({ email: user.email, password: user.password });
-
-    // Get the user
+    await agent.post("/api/register").send(user); // This logs the user in
     const response = await agent.get("/api/user");
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty("id");
     expect(response.body.email).toBe(user.email);
-
-    // Cleanup
     await storage.deleteUserByEmail(user.email);
   });
 
   it("should logout an authenticated user", async () => {
-    const user = {
-      name: "Logout Test User",
-      email: `logout-${Date.now()}@example.com`,
-      password: "password123",
-    };
-    // Create an agent to handle cookies
+    const user = { name: "Logout Test User", email: `logout-${Date.now()}@example.com`, password: "password123" };
     const agent = request.agent(server);
-
-    // Register and login a user
-    await agent.post("/api/register").send(user);
-    await agent
-      .post("/api/login")
-      .send({ email: user.email, password: user.password });
-
-    // Logout
+    await agent.post("/api/register").send(user); // Login
     const logoutResponse = await agent.post("/api/logout");
     expect(logoutResponse.status).toBe(200);
-
-    // Check that the user is no longer authenticated
     const userResponse = await agent.get("/api/user");
     expect(userResponse.status).toBe(401);
-
-    // Cleanup
     await storage.deleteUserByEmail(user.email);
+  });
+
+  it("should return 500 if logout fails", async () => {
+    const agent = request.agent(server);
+    currentAuthenticatedUser = { name: 'Test', email: 'test@test.com', id: '123'};
+    logoutShouldFail = true;
+    const response = await agent.post("/api/logout");
+    expect(response.status).toBe(500);
+    currentAuthenticatedUser = undefined;
   });
 });

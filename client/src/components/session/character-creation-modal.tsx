@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertCharacterSchema } from "@shared/schema";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth"; // Import useAuth to get user.id
 
 const createCharacterSchema = insertCharacterSchema;
 type CreateCharacterData = z.infer<typeof createCharacterSchema>;
@@ -23,6 +24,7 @@ interface CharacterCreationModalProps {
 export function CharacterCreationModal({ open, onOpenChange, tableId }: CharacterCreationModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth(); // Get user from useAuth
 
   const form = useForm<CreateCharacterData>({
     resolver: zodResolver(createCharacterSchema),
@@ -33,13 +35,20 @@ export function CharacterCreationModal({ open, onOpenChange, tableId }: Characte
       strength: 10,
       agility: 10,
       intelligence: 10,
-      tableId,
+      // tableId is omitted from schema and passed separately
     },
   });
 
   const createCharacterMutation = useMutation({
     mutationFn: async (data: CreateCharacterData) => {
-      const res = await apiRequest("POST", `/api/tables/${tableId}/characters`, data);
+      if (!user) { // Ensure user is logged in
+        throw new Error("User not authenticated.");
+      }
+      const res = await apiRequest("POST", `/api/tables/${tableId}/characters`, {
+        ...data,
+        userId: user.id, // Add userId from auth context
+        tableId: tableId, // Add tableId from props
+      });
       return await res.json();
     },
     onSuccess: () => {
